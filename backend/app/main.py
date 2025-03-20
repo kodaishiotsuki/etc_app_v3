@@ -1,9 +1,10 @@
-from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
-from sqladmin import Admin, ModelView
-from app.api.v1.api import api_router
 import logging
 
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from sqladmin import Admin
+
+from app.api.v1.api import api_router
 from app.database.database import engine
 
 # ロギングの設定

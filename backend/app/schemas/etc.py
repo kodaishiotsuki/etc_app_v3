@@ -1,6 +1,6 @@
+from typing import Optional
+
 from pydantic import BaseModel
-from typing import List, Optional, Union
-from fastapi.responses import StreamingResponse
 
 
 class ETCData(BaseModel):
@@ -20,5 +20,5 @@ class ETCResponse(BaseModel):
     error: Optional[str] = None
 
 
-# レスポンスの型を定義（StreamingResponseは除外）
+# レスポンスの型を定義
 ETCResponseType = ETCResponse

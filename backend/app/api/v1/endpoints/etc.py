@@ -1,11 +1,11 @@
-import tempfile
 import logging
-import io
-import pandas as pd
-from fastapi import APIRouter, UploadFile, File, HTTPException, Response
-from fastapi.responses import StreamingResponse
+import tempfile
 from typing import Optional
+
+import pandas as pd
 import pymupdf4llm
+from fastapi import APIRouter, File, HTTPException, Response, UploadFile
+
 from app.schemas.etc import ETCResponse
 
 router = APIRouter()
@@ -61,7 +61,7 @@ async def upload_pdf(
                 if (
                     "|" in line
                     and not line.startswith("|---")
-                    and not "利用年月日" in line
+                    and "利用年月日" not in line
                 ):
                     parts = line.strip().split("|")
                     if len(parts) >= 5:
@@ -80,9 +80,12 @@ async def upload_pdf(
                                 # ICの情報を抽出
                                 ic_info = []
                                 for x in date_ic_info:
-                                    if not ":" in x and not "/" in x:
-                                        if not x.replace(" ", "").isdigit():
-                                            ic_info.append(x)
+                                    if (
+                                        ":" not in x
+                                        and "/" not in x
+                                        and not x.replace(" ", "").isdigit()
+                                    ):
+                                        ic_info.append(x)
 
                                 # ICの情報を処理
                                 if len(ic_info) == 1:
@@ -129,7 +132,12 @@ async def upload_pdf(
                                 card_number = vehicle_info[2]
 
                                 # 新しい形式で行を追加
-                                formatted_line = f"| {card_number} | {month_number} | {formatted_date} | {vehicle_type} | {vehicle_number} | {entry_ic} | {exit_ic} | {original_fee} | {final_fee} |"
+                                formatted_line = (
+                                    f"| {card_number} | {month_number} | "
+                                    f"{formatted_date} | {vehicle_type} | "
+                                    f"{vehicle_number} | {entry_ic} | {exit_ic} | "
+                                    f"{original_fee} | {final_fee} |"
+                                )
                                 formatted_lines.append(formatted_line)
 
                                 # エクセル出力用のデータを保存
@@ -177,7 +185,10 @@ async def upload_pdf(
 
                 return Response(
                     content=excel_data,
-                    media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                    media_type=(
+                        "application/vnd.openxmlformats-officedocument"
+                        ".spreadsheetml.sheet"
+                    ),
                     headers={
                         "Content-Disposition": "attachment; filename=etc_data.xlsx",
                         "Content-Length": str(len(excel_data)),

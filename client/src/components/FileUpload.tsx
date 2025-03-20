@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
+import * as XLSX from 'xlsx'
 
 export default function FileUpload() {
   const [file, setFile] = useState<File | null>(null)
@@ -13,6 +14,63 @@ export default function FileUpload() {
     setFile(e.target.files?.[0] || null)
     setErrorMessage(null)
     setMarkdownText(null)
+  }
+
+  const convertMarkdownToExcel = (markdownText: string) => {
+    try {
+      // マークダウンテーブルをパース
+      const lines = markdownText
+        .split('\n')
+        .filter((line) => line.trim() !== '')
+      const headers = lines[0]
+        .split('|')
+        .filter((cell) => cell !== '') // 空のセルを保持するため、trim()を削除
+        .map((header) => header.trim())
+
+      // データ行を処理（ヘッダーと区切り線をスキップ）
+      const data = lines.slice(2).map((line) => {
+        // 行の先頭と末尾の | を削除し、残りを | で分割
+        const cells = line.replace(/^\||\|$/g, '').split('|')
+
+        // 各セルを処理
+        const values = cells.map((cell) => {
+          const value = cell.trim()
+          return value === '' ? '' : value.replace(/\s+/g, ' ')
+        })
+
+        // オブジェクトを作成
+        return headers.reduce(
+          (obj, header, index) => {
+            // インデックスが範囲内の場合のみ値を設定
+            obj[header] = index < values.length ? values[index] : ''
+            return obj
+          },
+          {} as Record<string, string>
+        )
+      })
+
+      // Excelワークブックを作成
+      const wb = XLSX.utils.book_new()
+      const ws = XLSX.utils.json_to_sheet(data)
+
+      // 列幅の自動調整
+      const colWidths = headers.map((header) => ({
+        wch: Math.max(
+          header.length,
+          ...data.map((row) => String(row[header]).length)
+        ),
+      }))
+      ws['!cols'] = colWidths
+
+      // ワークシートをブックに追加
+      XLSX.utils.book_append_sheet(wb, ws, 'ETCデータ')
+
+      // Excelファイルを生成してダウンロード
+      XLSX.writeFile(wb, 'etc_data.xlsx')
+    } catch (error) {
+      console.error('Excel conversion error:', error)
+      throw new Error('Excelファイルの生成に失敗しました。')
+    }
   }
 
   const handleSubmit = async (
@@ -30,50 +88,29 @@ export default function FileUpload() {
 
     const formData = new FormData()
     formData.append('file', file)
-    formData.append('output_format', format) // 修正ポイント
+    formData.append('output_format', 'markdown') // 常にmarkdownで取得
 
     try {
-      const response = await fetch('/api/upload', {
+      const response = await fetch('http://localhost:8000/api/v1/etc/upload', {
         method: 'POST',
         body: formData,
       })
 
-      const contentType = response.headers.get('content-type')
-
       if (!response.ok) {
         let errorMessage = 'ファイル処理中にエラーが発生しました。'
         try {
-          if (contentType?.includes('application/json')) {
-            const errorData = await response.json()
-            errorMessage = errorData.error || errorMessage
-          } else {
-            const errorText = await response.text()
-            errorMessage = errorText || errorMessage
-          }
+          const errorData = await response.json()
+          errorMessage = errorData.error || errorMessage
         } catch (parseError) {
           console.error('Error parsing error response:', parseError)
         }
         throw new Error(errorMessage)
       }
 
+      const data = await response.json()
       if (format === 'excel') {
-        if (!contentType?.includes('spreadsheetml')) {
-          throw new Error('Excelファイルの生成に失敗しました。')
-        }
-        const blob = await response.blob()
-        const excelBlob = new Blob([blob], {
-          type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-        })
-        const url = window.URL.createObjectURL(excelBlob)
-        const a = document.createElement('a')
-        a.href = url
-        a.download = 'etc_data.xlsx'
-        document.body.appendChild(a)
-        a.click()
-        window.URL.revokeObjectURL(url)
-        a.remove()
+        convertMarkdownToExcel(data.markdown)
       } else {
-        const data = await response.json()
         setMarkdownText(data.markdown)
       }
       setErrorMessage(null)
