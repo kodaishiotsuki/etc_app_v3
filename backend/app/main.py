@@ -3,8 +3,13 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqladmin import Admin, ModelView
 from app.database.database import engine
 from app.models.user import User
+from app.api.users import router as users_router
 
-app = FastAPI()
+app = FastAPI(
+    title="FastAPI App",
+    description="FastAPI application with SQLAlchemy and PostgreSQL",
+    version="1.0.0",
+)
 
 # CORSの設定
 app.add_middleware(
@@ -27,6 +32,9 @@ class UserAdmin(ModelView, model=User):
 
 
 admin.add_view(UserAdmin)
+
+# APIルーターの追加
+app.include_router(users_router, prefix="/api", tags=["users"])
 
 
 @app.get("/")

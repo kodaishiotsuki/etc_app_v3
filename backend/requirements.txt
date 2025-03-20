@@ -6,4 +6,5 @@ alembic==1.12.1
 python-dotenv==1.0.0
 pydantic==2.5.2
 pydantic-settings==2.1.0
-sqladmin==0.16.0 
+sqladmin==0.16.0
+email-validator==2.1.0 
