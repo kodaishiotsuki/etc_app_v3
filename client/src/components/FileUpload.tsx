@@ -3,16 +3,15 @@
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import * as XLSX from 'xlsx'
+import { toast } from 'sonner'
 
 export default function FileUpload() {
   const [file, setFile] = useState<File | null>(null)
   const [markdownText, setMarkdownText] = useState<string | null>(null)
-  const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [loading, setLoading] = useState<boolean>(false)
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFile(e.target.files?.[0] || null)
-    setErrorMessage(null)
     setMarkdownText(null)
   }
 
@@ -24,7 +23,7 @@ export default function FileUpload() {
         .filter((line) => line.trim() !== '')
       const headers = lines[0]
         .split('|')
-        .filter((cell) => cell !== '') // 空のセルを保持するため、trim()を削除
+        .filter((cell) => cell !== '')
         .map((header) => header.trim())
 
       // データ行を処理（ヘッダーと区切り線をスキップ）
@@ -67,8 +66,12 @@ export default function FileUpload() {
 
       // Excelファイルを生成してダウンロード
       XLSX.writeFile(wb, 'etc_data.xlsx')
+
+      // 成功時のトースト表示
+      toast.success('Excelファイルのダウンロードが完了しました')
     } catch (error) {
       console.error('Excel conversion error:', error)
+      toast.error('Excelファイルの生成に失敗しました')
       throw new Error('Excelファイルの生成に失敗しました。')
     }
   }
@@ -79,18 +82,17 @@ export default function FileUpload() {
   ) => {
     e.preventDefault()
     if (!file) {
-      setErrorMessage('ファイルを選択してください。')
+      toast.error('ファイルを選択してください')
       return
     }
 
     setLoading(true)
-    setErrorMessage(null)
-
-    const formData = new FormData()
-    formData.append('file', file)
-    formData.append('output_format', 'markdown') // 常にmarkdownで取得
 
     try {
+      const formData = new FormData()
+      formData.append('file', file)
+      formData.append('output_format', 'markdown')
+
       const response = await fetch('http://localhost:8000/api/v1/etc/upload', {
         method: 'POST',
         body: formData,
@@ -108,19 +110,24 @@ export default function FileUpload() {
       }
 
       const data = await response.json()
+
       if (format === 'excel') {
-        convertMarkdownToExcel(data.markdown)
+        await convertMarkdownToExcel(data.markdown)
       } else {
         setMarkdownText(data.markdown)
+        toast.success('PDFの解析が完了しました', {
+          duration: 3000,
+        })
       }
-      setErrorMessage(null)
     } catch (error) {
       console.error('Error:', error)
-      setErrorMessage(
+      const errorMsg =
         error instanceof Error
           ? error.message
           : '予期せぬエラーが発生しました。'
-      )
+      toast.error(errorMsg, {
+        duration: 4000,
+      })
       setMarkdownText(null)
     } finally {
       setLoading(false)
@@ -156,9 +163,7 @@ export default function FileUpload() {
           </Button>
         </div>
       </form>
-      {errorMessage && (
-        <div className="mt-4 text-red-500 font-semibold">{errorMessage}</div>
-      )}
+
       {markdownText && (
         <div className="mt-4 p-4 border rounded-lg w-full">
           <h2 className="text-lg font-semibold">Markdown 内容:</h2>
