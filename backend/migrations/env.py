@@ -1,15 +1,14 @@
-from logging.config import fileConfig
 import os
 import sys
+from logging.config import fileConfig
+
 from alembic import context
-from sqlalchemy import engine_from_config
-from sqlalchemy import pool
+from sqlalchemy import engine_from_config, pool
 
 # このパスを追加することで、appモジュールをインポートできるようになります
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from app.database.database import Base
-from app.models import *  # 全てのモデルをインポート
 
 # Alembic Config オブジェクトを取得
 config = context.config

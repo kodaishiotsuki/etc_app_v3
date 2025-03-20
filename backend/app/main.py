@@ -1,13 +1,14 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from sqladmin import Admin, ModelView
+
+from app.api.users import router as users_router
 from app.database.database import engine
 from app.models.user import User
-from app.api.users import router as users_router
 
 app = FastAPI(
     title="FastAPI App",
-    description="FastAPI application with SQLAlchemy and PostgreSQL",
+    description="FastAPI application",
     version="1.0.0",
 )
 

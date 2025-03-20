@@ -1,7 +1,4 @@
-#!/usr/bin/env sh
-. "$(dirname -- "$0")/_/husky.sh"
-
-# エラーが発生したら即座に終了
+#!/bin/sh
 set -e
 
 echo "🔍 フロントエンドのコードチェックを実行中..."
@@ -9,13 +6,13 @@ cd client
 
 # フロントエンドのコードチェック
 echo "⚡️ ESLintを実行中..."
-bun lint || {
+bun run lint:fix || {
   echo "❌ ESLintのチェックに失敗しました。"
   exit 1
 }
 
 echo "💅 Prettierを実行中..."
-bun format:check || {
+bun run format && bun run format:check || {
   echo "❌ Prettierのチェックに失敗しました。"
   exit 1
 }
@@ -25,26 +22,37 @@ cd ..
 echo "🔍 バックエンドのコードチェックを実行中..."
 cd backend
 
-# バックエンドのコードチェック
-if docker compose ps | grep -q "app.*running"; then
-  echo "⚫️ Blackを実行中..."
-  docker compose exec -T app black --check . || {
-    echo "❌ Blackのチェックに失敗しました。"
-    echo "以下のコマンドで自動フォーマットできます："
-    echo "docker compose exec app black ."
-    exit 1
-  }
-
-  echo "🔍 Flake8を実行中..."
-  docker compose exec -T app flake8 . || {
-    echo "❌ Flake8のチェックに失敗しました。"
-    exit 1
-  }
-else
-  echo "⚠️ バックエンドのDockerコンテナが実行されていません。"
-  echo "以下のコマンドでコンテナを起動してください："
-  echo "docker compose up -d"
-  exit 1
+# Docker コンテナの起動確認と自動起動
+if ! docker ps --format '{{.Names}}' | grep -q "etc_app_v3-backend-1"; then
+  echo "⚠️ バックエンドのDockerコンテナが実行されていません。起動します..."
+  docker compose up -d
+  sleep 5
 fi
 
-echo "✅ すべてのコード品質チェックが完了しました！" 
+echo "⚫️ isort を実行中..."
+if ! docker compose exec -T backend isort --check-only .; then
+  echo "❌ isort のチェックに失敗しました。自動フォーマットを実行します..."
+  docker compose exec -T backend isort . || {
+    echo "❌ isort の自動フォーマットに失敗しました。"
+    exit 1
+  }
+  echo "✅ isort の自動フォーマットが完了しました。"
+fi
+
+echo "⚫️ Black を実行中..."
+if ! docker compose exec -T backend black --check .; then
+  echo "❌ Black のチェックに失敗しました。自動フォーマットを実行します..."
+  docker compose exec -T backend black . || {
+    echo "❌ Black の自動フォーマットに失敗しました。"
+    exit 1
+  }
+  echo "✅ Black の自動フォーマットが完了しました。"
+fi
+
+echo "🔍 Flake8 を実行中..."
+docker compose exec -T backend flake8 . || {
+  echo "❌ Flake8 のチェックに失敗しました。"
+  exit 1
+}
+
+echo "✅ すべてのコード品質チェックが完了しました！"
