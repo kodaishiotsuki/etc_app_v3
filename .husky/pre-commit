@@ -1,0 +1,50 @@
+#!/usr/bin/env sh
+. "$(dirname -- "$0")/_/husky.sh"
+
+# エラーが発生したら即座に終了
+set -e
+
+echo "🔍 フロントエンドのコードチェックを実行中..."
+cd client
+
+# フロントエンドのコードチェック
+echo "⚡️ ESLintを実行中..."
+bun lint || {
+  echo "❌ ESLintのチェックに失敗しました。"
+  exit 1
+}
+
+echo "💅 Prettierを実行中..."
+bun format:check || {
+  echo "❌ Prettierのチェックに失敗しました。"
+  exit 1
+}
+
+cd ..
+
+echo "🔍 バックエンドのコードチェックを実行中..."
+cd backend
+
+# バックエンドのコードチェック
+if docker compose ps | grep -q "app.*running"; then
+  echo "⚫️ Blackを実行中..."
+  docker compose exec -T app black --check . || {
+    echo "❌ Blackのチェックに失敗しました。"
+    echo "以下のコマンドで自動フォーマットできます："
+    echo "docker compose exec app black ."
+    exit 1
+  }
+
+  echo "🔍 Flake8を実行中..."
+  docker compose exec -T app flake8 . || {
+    echo "❌ Flake8のチェックに失敗しました。"
+    exit 1
+  }
+else
+  echo "⚠️ バックエンドのDockerコンテナが実行されていません。"
+  echo "以下のコマンドでコンテナを起動してください："
+  echo "docker compose up -d"
+  exit 1
+fi
+
+echo "✅ すべてのコード品質チェックが完了しました！" 
