@@ -2,19 +2,18 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
-# システムパッケージのインストール (オプション)
+# システムの依存関係をインストール
 RUN apt-get update && apt-get install -y \
-    gcc \
+    build-essential \
     libpq-dev \
-    && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
-# requirements.txt をコピーしてインストール
+# Pythonパッケージをインストール
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# アプリケーションコードをコピー
+# アプリケーションのコードをコピー
 COPY . .
 
-# アプリケーション起動コマンド
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--reload"]
+# アプリケーションを実行
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]

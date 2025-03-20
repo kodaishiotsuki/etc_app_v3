@@ -1,21 +1,26 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from sqladmin import Admin, ModelView
+from app.api.v1.api import api_router
+import logging
 
-from app.api.users import router as users_router
 from app.database.database import engine
-from app.models.user import User
+
+# ロギングの設定
+logging.basicConfig(
+    level=logging.DEBUG, format="%(asctime)s [%(levelname)s] %(message)s"
+)
 
 app = FastAPI(
-    title="FastAPI App",
-    description="FastAPI application",
+    title="ETC Data Processing API",
+    description="API for processing ETC data from PDF files",
     version="1.0.0",
 )
 
-# CORSの設定
+# CORSミドルウェアの設定
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],  # Next.jsのデフォルトポート
+    allow_origins=["*"],  # 本番環境では適切なオリジンを指定してください
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -25,17 +30,8 @@ app.add_middleware(
 admin = Admin(app, engine)
 
 
-class UserAdmin(ModelView, model=User):
-    column_list = [User.id, User.email, User.username, User.created_at, User.updated_at]
-    name = "User"
-    name_plural = "Users"
-    icon = "fa-solid fa-user"
-
-
-admin.add_view(UserAdmin)
-
-# APIルーターの追加
-app.include_router(users_router, prefix="/api", tags=["users"])
+# APIルーターの登録
+app.include_router(api_router, prefix="/api/v1")
 
 
 @app.get("/")
